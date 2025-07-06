@@ -65,6 +65,17 @@ app.post('/api/carts', (req, res) => {
     res.status(201).json(carrito);
 });
 
+app.post('/api/carts/:id', (req, res) => {
+    const pid = parseInt(req.params.id);
+    const { id, quantity } = req.body;
+    const registro = {
+        id,
+        quantity,
+    };
+    carts[pid - 1].products.push(registro);
+    res.status(201).json(carts[pid - 1]);
+});
+
 //Metodos PUT
 
 app.put('/api/products/:id', (req, res) => {
