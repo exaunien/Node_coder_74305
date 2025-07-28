@@ -1,12 +1,38 @@
-let { productos } = require('./db');
-let { carts } = require('./db');
-const express = require('express');
+import { createServer } from 'http';
+import __dirname from './utils.js';
+import homeRouter from './routes/home.router.js';
+import express from 'express';
+import { engine } from 'express-handlebars';
+import { Server } from 'socket.io';
+import { productos } from './db.js';
+import { carts } from './db.js';
+import { productsData } from './sockets/productsData.js';
+
 const app = express();
 const PORT = 8080;
+const httpServer = createServer(app);
+const io = new Server(httpServer);
 
-//Middlewares
 app.use(express.json());
 
+//Configuracion del motor de plantillas
+app.engine(
+    'hbs',
+    engine({
+        extname: '.hbs',
+    })
+);
+app.set('views', __dirname + '/views');
+app.set('view engine', 'hbs');
+
+//Configuracion de archivos estaticos
+app.use(express.static(__dirname + '/public'));
+
+//Rutas
+app.use('/', homeRouter);
+app.use((req, res) => {
+    res.status(404).render('404', { title: '404 - Paginna no encontrada' });
+});
 //Metodos GET
 
 app.get('/', (req, res) => {
@@ -105,7 +131,28 @@ app.delete('/api/products/:id', (req, res) => {
     res.status(204).send();
 });
 
+//socket Backend
+
+io.on('connection', (socket) => {
+    console.log('🟢 Cliente conectado vía WebSocket');
+
+    socket.emit('productosActualizados', productsData.getProducts());
+
+    socket.on('nuevoProducto', (producto) => {
+        const nuevo = productsData.addProduct(producto);
+        io.emit('productosActualizados', productsData.getProducts());
+    });
+
+    socket.on('eliminarProducto', (id) => {
+        const eliminado = productsData.deleteProduct(id);
+        if (eliminado) {
+            io.emit('productosActualizados', productsData.getProducts());
+        }
+    });
+});
+
 //Definicion del puerto donde se escucha el servidor
-app.listen(PORT, () => {
-    console.log(`Servidor corriendo en http://localhost:${PORT}`);
+
+httpServer.listen(PORT, () => {
+    console.log(`Servidor y WebSocket corriendo en http://localhost:${PORT}`);
 });

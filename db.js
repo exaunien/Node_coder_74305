@@ -451,4 +451,4 @@ const carts = [
     },
 ];
 
-module.exports = { productos, carts };
+export { productos, carts };
